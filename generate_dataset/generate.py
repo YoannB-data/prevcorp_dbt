@@ -168,6 +168,8 @@ def gen_contract_companies(
         n = random.choices([1, 2, 3], n_companies_weights)[0]
         chosen = random.sample(company_ids, min(n, len(company_ids)))
 
+        # Garantie : au moins une entreprise par contrat
+        added = False
         for company_id in chosen:
             existing_types = [
                 c["TYP_CONTRAT"]
@@ -187,6 +189,18 @@ def gen_contract_companies(
             if typ in existing_types:
                 continue
 
+            key = (contract["CONTRACT_ID"], company_id)
+            if key not in pairs:
+                pairs.add(key)
+                rows.append({
+                    "CONTRACT_ID": contract["CONTRACT_ID"],
+                    "COMPANY_ID":  company_id,
+                })
+                added = True
+
+        # Si aucune entreprise n'a pu être ajoutée, forcer un lien avec une entreprise aléatoire
+        if not added:
+            company_id = random.choice(company_ids)
             key = (contract["CONTRACT_ID"], company_id)
             if key not in pairs:
                 pairs.add(key)
@@ -693,3 +707,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
