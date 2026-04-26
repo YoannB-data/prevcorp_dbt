@@ -1,0 +1,52 @@
+﻿version: 2
+
+models:
+  - name: dim__contrats
+    description: |
+      **Ce que c'est :** Référentiel des contrats de prévoyance collective souscrits auprès de PrevCorp, enrichi du segment de marché et du nombre d'entreprises couvertes.
+      **Grain :** Une ligne = un contrat.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses du portefeuille contrats (types de population, durée de vie, concentration par segment).
+      **Sources :** `int__contrats_enrichis` (lui-même issu de `stg_prevcorp__contrats`, `stg_prevcorp__segments`, `stg_prevcorp__contrats_entreprises`).
+
+    columns:
+      - name: contrat_id
+        description: Identifiant unique du contrat.
+        tests:
+          - unique
+          - not_null
+
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: contrat_type
+        description: |
+          Catégorie de personnel couverte par le contrat.
+          CADRE = salariés cadres uniquement. NON CADRE = salariés non cadres uniquement. ENSEMBLE DU PERSONNEL = tous salariés confondus.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+
+      - name: segment_nom
+        description: Libellé du segment de marché auquel appartient le contrat (ex. "Boucherie artisanale", "Enseignement privé").
+
+      - name: debut_date
+        description: Date d'effet du contrat.
+        tests:
+          - not_null
+
+      - name: fin_date
+        description: Date de résiliation du contrat. NULL si le contrat est toujours en vigueur.
+
+      - name: est_en_cours
+        description: Indique si le contrat est actif à la date d'aujourd'hui. Faux dès lors qu'une date de résiliation est renseignée et passée.
+        tests:
+          - not_null
+
+      - name: entreprise_nombre
+        description: Nombre d'entreprises rattachées au contrat. La majorité des contrats couvrent une seule entreprise ; jusqu'à trois entreprises sont possibles.
+        tests:
+          - not_null

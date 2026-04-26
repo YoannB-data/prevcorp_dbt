@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: dim__entreprises
+    description: |
+      **Ce que c'est :** Référentiel des entreprises clientes de PrevCorp, titulaires ou co-titulaires d'un contrat prévoyance collective.
+      **Grain :** Une ligne = une entreprise.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses du portefeuille entreprises (activité, résiliations, couverture géographique).
+      **Sources :** `stg_prevcorp__entreprises`.
+
+    columns:
+      - name: entreprise_id
+        description: Identifiant unique de l'entreprise.
+        tests:
+          - unique
+          - not_null
+
+      - name: siret
+        description: Numéro SIRET à 14 chiffres de l'entreprise. Traité comme une chaîne de caractères pour préserver les zéros initiaux.
+        tests:
+          - not_null
+
+      - name: entreprise_nom
+        description: Raison sociale de l'entreprise.
+        tests:
+          - not_null
+
+      - name: debut_date
+        description: Date d'entrée de l'entreprise dans le portefeuille PrevCorp.
+        tests:
+          - not_null
+
+      - name: fin_date
+        description: Date de résiliation ou de fermeture de l'entreprise dans le portefeuille. NULL si l'entreprise est toujours active.
+
+      - name: est_en_cours
+        description: Indique si l'entreprise est toujours active dans le portefeuille à la date d'aujourd'hui.
+        tests:
+          - not_null

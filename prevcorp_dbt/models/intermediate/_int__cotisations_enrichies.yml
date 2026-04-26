@@ -1,0 +1,63 @@
+﻿version: 2
+
+models:
+  - name: int__cotisations_enrichies
+    description: |
+      **Ce que c'est :** Cotisations trimestrielles enrichies des informations du contrat et du segment associé.
+      **Grain :** Une ligne = une cotisation (une échéance trimestrielle pour un contrat donné).
+      **À qui ça s'adresse :** Mart `fct__cotisations` et analyses de sinistralité nécessitant la mise en regard des cotisations perçues.
+      **Sources :** `stg_prevcorp__cotisations`, `stg_prevcorp__contrats`, `stg_prevcorp__segments`.
+
+    columns:
+      - name: cotisation_id
+        description: Identifiant unique de la cotisation.
+        tests:
+          - unique
+          - not_null
+
+      - name: contrat_id
+        description: Identifiant du contrat auquel se rattache la cotisation.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: contrat_type
+        description: |
+          Catégorie de personnel couverte par le contrat.
+          CADRE = salariés cadres uniquement. NON CADRE = salariés non cadres uniquement. ENSEMBLE DU PERSONNEL = tous salariés confondus.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+
+      - name: contrat_est_en_cours
+        description: Indique si le contrat était toujours actif au moment du calcul. Permet de distinguer les cotisations portant sur des contrats résiliés.
+
+      - name: segment_nom
+        description: Libellé du segment de marché du contrat, tel que "Boucherie artisanale" ou "Enseignement privé".
+
+      - name: echeance_date
+        description: Premier jour du trimestre concerné par la cotisation (1er janvier, 1er avril, 1er juillet ou 1er octobre).
+        tests:
+          - not_null
+
+      - name: trimestre
+        description: Année et trimestre de l'échéance, au format "AAAA QT" (ex. "2023 1T", "2024 3T"). Dérivé de `echeance_date`.
+        tests:
+          - not_null
+
+      - name: cotisation_montant
+        description: Montant de la cotisation trimestrielle en euros. Stable au sein d'une année, avec une revalorisation annuelle pouvant atteindre 15 % au 1er janvier.
+        tests:
+          - not_null
+
+      - name: encaissement_date
+        description: Date à laquelle la cotisation a été effectivement encaissée, soit environ trois mois après la date d'échéance.

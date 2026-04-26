@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: dim__segments
+    description: |
+      **Ce que c'est :** Référentiel des segments de marché couverts par PrevCorp.
+      **Grain :** Une ligne = un segment de marché.
+      **À qui ça s'adresse :** Agent text-to-SQL et toute analyse nécessitant de filtrer ou regrouper le portefeuille par secteur d'activité.
+      **Sources :** `stg_prevcorp__segments`.
+
+    columns:
+      - name: segment_id
+        description: Identifiant unique du segment de marché.
+        tests:
+          - unique
+          - not_null
+
+      - name: segment_nom
+        description: Libellé du segment, correspondant à un secteur professionnel couvert par une convention collective (ex. "Boucherie artisanale", "Enseignement privé").
+        tests:
+          - not_null

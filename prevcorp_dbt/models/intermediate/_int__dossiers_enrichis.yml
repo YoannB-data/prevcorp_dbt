@@ -1,0 +1,148 @@
+﻿version: 2
+
+models:
+  - name: int__dossiers_enrichis
+    description: |
+      **Ce que c'est :** Dossiers de sinistres enrichis des informations de l'assuré, de l'entreprise, du contrat et du segment.
+      **Grain :** Une ligne = un dossier de sinistre.
+      **À qui ça s'adresse :** Mart `fct__dossiers` et toute analyse nécessitant un contexte complet sur le sinistre (identité assuré, employeur, contrat, durée).
+      **Sources :** `stg_prevcorp__dossiers`, `stg_prevcorp__assures`, `stg_prevcorp__entreprises`, `stg_prevcorp__contrats`, `stg_prevcorp__segments`.
+      **Exceptions :** `duree_dossier_jours` est calculée jusqu'au 31/12/2025 pour les dossiers en cours, et jusqu'à `etat_date` pour les dossiers clos.
+
+    columns:
+      - name: dossier_id
+        description: Identifiant unique du dossier de sinistre.
+        tests:
+          - unique
+          - not_null
+
+      - name: dossier_numero
+        description: Numéro de dossier tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: risque
+        description: |
+          Nature du risque couvert par le dossier.
+          Incapacité = arrêt de travail temporaire. Invalidité = incapacité permanente. Décès = capital décès versé aux bénéficiaires. Rente viagère / Rente éducation = rentes post-décès.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Incapacité", "Invalidité", "Décès", "Rente viagère", "Rente éducation"]
+
+      - name: nature_arret
+        description: |
+          Cause médicale ou juridique de l'arrêt à l'origine du dossier.
+          Applicable principalement aux risques Incapacité et Invalidité.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["Maladie", "Accident travail", "Accident de trajet", "Maladie Professionnelle", "Maternité"]
+
+      - name: fait_generateur_date
+        description: Date du sinistre initial, c'est-à-dire la date à laquelle l'événement déclencheur s'est produit.
+        tests:
+          - not_null
+
+      - name: assure_id
+        description: Identifiant de l'assuré concerné par le dossier.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__assures')
+                field: assure_id
+
+      - name: assure_nom
+        description: Nom de famille de l'assuré.
+
+      - name: assure_prenom
+        description: Prénom de l'assuré.
+
+      - name: naissance_date
+        description: Date de naissance de l'assuré, utile pour le calcul de l'âge au moment du sinistre.
+
+      - name: adresse
+        description: Adresse postale de résidence de l'assuré.
+
+      - name: pays_code
+        description: Code ISO du pays de résidence de l'assuré (ex. FR, DE, MA).
+
+      - name: contrat_id
+        description: Identifiant du contrat sous lequel le dossier a été ouvert.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+
+      - name: contrat_numero
+        description: Numéro du contrat sous lequel le dossier a été ouvert.
+
+      - name: contrat_type
+        description: |
+          Catégorie de personnel couverte par le contrat.
+          CADRE = salariés cadres uniquement. NON CADRE = salariés non cadres uniquement. ENSEMBLE DU PERSONNEL = tous salariés confondus.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+
+      - name: segment_nom
+        description: Libellé du segment de marché du contrat, tel que "Boucherie artisanale" ou "Enseignement privé".
+
+      - name: entreprise_id
+        description: Identifiant de l'entreprise employant l'assuré au moment du sinistre.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__entreprises')
+                field: entreprise_id
+
+      - name: siret
+        description: Numéro SIRET à 14 chiffres de l'entreprise employant l'assuré au moment du sinistre.
+
+      - name: entreprise_nom
+        description: Raison sociale de l'entreprise employant l'assuré au moment du sinistre.
+
+      - name: entreprise_est_en_cours
+        description: Indique si l'entreprise est toujours active dans le portefeuille à la date d'aujourd'hui.
+
+      - name: salaire_montant
+        description: Salaire de référence de l'assuré servant de base au calcul des prestations, exprimé en euros mensuels bruts.
+
+      - name: creation_date
+        description: Date d'ouverture du dossier dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: etat_date
+        description: Date de la dernière mise à jour du statut du dossier. NULL si le dossier n'a jamais changé d'état depuis son ouverture.
+
+      - name: etat_motif
+        description: |
+          Motif de clôture du dossier. NULL tant que le dossier est en cours.
+          SANS SUITE = dossier fermé sans prestation. RETRAITE = assuré parti en retraite. REPRISE TRAVAIL = retour au travail. DECEDE = assuré décédé.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["SANS SUITE", "RETRAITE", "REPRISE TRAVAIL", "DECEDE"]
+
+      - name: est_en_cours
+        description: Indique si le dossier est toujours actif et donne lieu à des prestations en cours de versement.
+        tests:
+          - not_null
+
+      - name: attest_non_activite_date
+        description: Date de réception de l'attestation de non-activité fournie par l'assuré. NULL si le document n'a pas encore été reçu.
+
+      - name: justif_ss_date
+        description: Date de réception du justificatif Sécurité sociale. NULL si le document n'a pas encore été reçu.
+
+      - name: duree_dossier_jours
+        description: Durée du dossier en jours. Pour un dossier clos, correspond à l'intervalle entre l'ouverture et la date de changement d'état. Pour un dossier en cours, correspond à l'intervalle entre l'ouverture et le 31 décembre 2025, date de fin de couverture du dataset.
+        tests:
+          - not_null

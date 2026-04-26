@@ -1,0 +1,46 @@
+﻿version: 2
+
+models:
+  - name: dim__beneficiaires
+    description: |
+      **Ce que c'est :** Bénéficiaires de rentes décès rattachés à un dossier sinistre, enrichis de leur âge calculé.
+      **Grain :** Une ligne = un bénéficiaire pour un dossier donné.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses des rentes DC (répartition conjoint/enfants, âge des bénéficiaires, durée prévisionnelle des rentes).
+      **Sources :** `stg_prevcorp__beneficiaires`.
+      **Exceptions :** Uniquement pour les dossiers Rente viagère (conjoint survivant) et Rente éducation (enfants du défunt).
+
+    columns:
+      - name: beneficiaire_id
+        description: Identifiant unique du bénéficiaire.
+        tests:
+          - unique
+          - not_null
+
+      - name: dossier_id
+        description: Identifiant du dossier de sinistre auquel ce bénéficiaire est rattaché.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+
+      - name: nom
+        description: Nom de famille du bénéficiaire.
+        tests:
+          - not_null
+
+      - name: prenom
+        description: Prénom du bénéficiaire.
+        tests:
+          - not_null
+
+      - name: naissance_date
+        description: Date de naissance du bénéficiaire.
+        tests:
+          - not_null
+
+      - name: age
+        description: Âge du bénéficiaire en années entières à la date d'aujourd'hui. Calculé à partir de la date de naissance.
+        tests:
+          - not_null

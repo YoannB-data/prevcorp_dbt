@@ -1,0 +1,386 @@
+﻿version: 2
+
+models:
+  - name: stg_prevcorp__segments
+    description: |
+      **Ce que c'est :** Segments de marché tels qu'extraits de la source.
+      **Grain :** Une ligne = un segment de marché.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_segments.
+    columns:
+      - name: segment_id
+        description: Identifiant unique du segment.
+        tests:
+          - unique
+          - not_null
+      - name: segment_nom
+        description: Libellé du segment de marché (ex. Boucherie artisanale, Enseignement privé).
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__contrats
+    description: |
+      **Ce que c'est :** Contrats PrevCorp nettoyés et typés.
+      **Grain :** Une ligne = un contrat.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_contracts.
+    columns:
+      - name: contrat_id
+        description: Identifiant unique du contrat.
+        tests:
+          - unique
+          - not_null
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il apparaît dans le progiciel de gestion.
+        tests:
+          - not_null
+      - name: segment_id
+        description: Référence au segment de marché auquel appartient ce contrat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__segments')
+                field: segment_id
+      - name: contrat_type
+        description: Population couverte par le contrat.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+      - name: debut_date
+        description: Date d'effet du contrat.
+        tests:
+          - not_null
+      - name: fin_date
+        description: Date de résiliation du contrat. NULL si le contrat est toujours en cours.
+      - name: est_en_cours
+        description: Vrai si le contrat est en cours (aucune date de résiliation enregistrée).
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__entreprises
+    description: |
+      **Ce que c'est :** Entreprises clientes de PrevCorp, nettoyées et typées.
+      **Grain :** Une ligne = une entreprise.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_companies.
+    columns:
+      - name: entreprise_id
+        description: Identifiant unique de l'entreprise.
+        tests:
+          - unique
+          - not_null
+      - name: siret
+        description: Numéro SIRET de l'entreprise (14 chiffres). Traité comme une chaîne de caractères pour préserver les zéros initiaux.
+        tests:
+          - not_null
+      - name: entreprise_nom
+        description: Raison sociale de l'entreprise.
+        tests:
+          - not_null
+      - name: debut_date
+        description: Date d'entrée de l'entreprise dans le portefeuille PrevCorp.
+        tests:
+          - not_null
+      - name: fin_date
+        description: Date de résiliation ou de fermeture de l'entreprise. NULL si l'entreprise est toujours active.
+      - name: est_en_cours
+        description: Vrai si l'entreprise est active (aucune date de fin enregistrée).
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__contrats_entreprises
+    description: |
+      **Ce que c'est :** Table de liaison entre contrats et entreprises (relation n-n).
+      **Grain :** Une ligne = un lien entre un contrat et une entreprise.
+      **À qui ça s'adresse :** Couche interne uniquement.
+      **Sources :** raw_contract_companies.
+      **Exceptions :** Une entreprise ne peut pas avoir à la fois un contrat ENSEMBLE DU PERSONNEL et un contrat CADRE ou NON CADRE.
+    columns:
+      - name: contrat_id
+        description: Référence au contrat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+      - name: entreprise_id
+        description: Référence à l'entreprise.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__entreprises')
+                field: entreprise_id
+
+  - name: stg_prevcorp__assures
+    description: |
+      **Ce que c'est :** Assurés et affiliés couverts par PrevCorp.
+      **Grain :** Une ligne = un assuré.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_policyholders.
+      **Exceptions :** Un assuré peut exister sans dossier sinistre actif (~5% du dataset). Le lien avec les contrats et entreprises se fait uniquement via les dossiers sinistres.
+    columns:
+      - name: assure_id
+        description: Identifiant unique de l'assuré.
+        tests:
+          - unique
+          - not_null
+      - name: nom
+        description: Nom de famille de l'assuré.
+        tests:
+          - not_null
+      - name: prenom
+        description: Prénom de l'assuré.
+        tests:
+          - not_null
+      - name: naissance_date
+        description: Date de naissance de l'assuré.
+        tests:
+          - not_null
+      - name: adresse
+        description: Adresse postale de l'assuré.
+      - name: pays_code
+        description: Code ISO du pays de résidence de l'assuré (ex. FR, DE, MA). Utilisé pour identifier les assurés résidant à l'étranger.
+        tests:
+          - not_null
+      - name: attestation_fiscale_etranger
+        description: Vrai si l'assuré a fourni une attestation fiscale d'un pays étranger. Pertinent uniquement pour les assurés résidant hors de France.
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__dossiers
+    description: |
+      **Ce que c'est :** Dossiers sinistres ouverts sur les assurés PrevCorp.
+      **Grain :** Une ligne = un dossier sinistre.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_claims.
+      **Exceptions :** Le champ nature_arret n'est renseigné que pour les dossiers Incapacité et Invalidité. Les champs attest_non_activite_date et justif_ss_date ne sont renseignés que pour les dossiers Invalidité.
+    columns:
+      - name: dossier_id
+        description: Identifiant unique du dossier sinistre.
+        tests:
+          - unique
+          - not_null
+      - name: dossier_numero
+        description: Numéro de dossier tel qu'il apparaît dans le progiciel de gestion.
+        tests:
+          - not_null
+      - name: assure_id
+        description: Référence à l'assuré concerné par ce dossier.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__assures')
+                field: assure_id
+      - name: contrat_id
+        description: Référence au contrat sous lequel ce dossier est géré.
+        tests:
+          - not_null
+      - name: entreprise_id
+        description: Référence à l'entreprise employeur de l'assuré. Dénormalisé pour refléter la réalité d'un SI de gestion.
+        tests:
+          - not_null
+      - name: risque
+        description: |
+          Nature du risque couvert par ce dossier.
+          Incapacité = arrêt de travail. Invalidité = incapacité permanente. Décès = décès de l'assuré. Rente viagère = rente versée au conjoint survivant. Rente éducation = rente versée aux enfants du défunt.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Incapacité", "Invalidité", "Décès", "Rente viagère", "Rente éducation"]
+      - name: nature_arret
+        description: |
+          Cause de l'arrêt de travail ou de l'invalidité. NULL pour les dossiers Décès et rentes.
+          Maladie = maladie ordinaire. Accident travail = accident survenu sur le lieu de travail. Accident de trajet = accident survenu sur le trajet domicile-travail. Maladie Professionnelle = maladie reconnue d'origine professionnelle. Maternité = congé maternité.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["Maladie", "Accident travail", "Accident de trajet", "Maladie Professionnelle", "Maternité"]
+      - name: salaire_montant
+        description: Salaire annuel de référence de l'assuré au moment de l'ouverture du dossier, en euros. Sert de base au calcul des prestations.
+        tests:
+          - not_null
+      - name: creation_date
+        description: Date d'ouverture du dossier dans le système de gestion.
+        tests:
+          - not_null
+      - name: fait_generateur_date
+        description: Date du sinistre initial. Peut être antérieure à la date d'ouverture du dossier.
+        tests:
+          - not_null
+      - name: etat_date
+        description: Date de la dernière mise à jour du statut du dossier.
+        tests:
+          - not_null
+      - name: etat_motif
+        description: |
+          Motif de clôture du dossier. NULL si le dossier est en cours.
+          SANS SUITE = dossier classé sans indemnisation. RETRAITE = assuré parti à la retraite. REPRISE TRAVAIL = assuré ayant repris une activité professionnelle. DECEDE = assuré décédé en cours de dossier.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["SANS SUITE", "RETRAITE", "REPRISE TRAVAIL", "DECEDE"]
+      - name: est_en_cours
+        description: Vrai si le dossier est en cours d'indemnisation (aucun motif de clôture enregistré).
+        tests:
+          - not_null
+      - name: attest_non_activite_date
+        description: Date de réception de l'attestation de non-activité. NULL si non reçue. Applicable uniquement aux dossiers Invalidité.
+      - name: justif_ss_date
+        description: Date de réception du justificatif Sécurité Sociale. NULL si non reçu. Applicable uniquement aux dossiers Invalidité.
+
+  - name: stg_prevcorp__paiements
+    description: |
+      **Ce que c'est :** Règlements effectués par PrevCorp sur les dossiers sinistres.
+      **Grain :** Une ligne = un règlement.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_payments.
+    columns:
+      - name: paiement_id
+        description: Identifiant unique du règlement.
+        tests:
+          - unique
+          - not_null
+      - name: dossier_id
+        description: Référence au dossier sinistre concerné par ce règlement.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+      - name: brut_montant
+        description: Montant brut versé à l'assuré, en euros, avant déduction du prélèvement à la source.
+        tests:
+          - not_null
+      - name: pas_montant
+        description: Montant du prélèvement à la source retenu sur ce règlement, en euros. Correspond à la part reversée à la DGFIP (Direction Générale des Finances Publiques), c'est à dire les impôts.
+        tests:
+          - not_null
+      - name: net_montant
+        description: Montant net effectivement perçu par l'assuré, en euros, après déduction du prélèvement à la source.
+        tests:
+          - not_null
+      - name: paiement_date
+        description: Date à laquelle le règlement a été émis par PrevCorp.
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__cotisations
+    description: |
+      **Ce que c'est :** Cotisations trimestrielles perçues par PrevCorp sur les contrats.
+      **Grain :** Une ligne = une cotisation trimestrielle pour un contrat donné.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles intermediate et marts.
+      **Sources :** raw_premiums.
+      **Exceptions :** Environ 5% des trimestres attendus sont absents (impayés). Environ 8% des cotisations représentent un double paiement (deux trimestres réglés en une fois).
+    columns:
+      - name: cotisation_id
+        description: Identifiant unique de la cotisation.
+        tests:
+          - unique
+          - not_null
+      - name: contrat_id
+        description: Référence au contrat concerné par cette cotisation.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+      - name: echeance_date
+        description: Premier jour du trimestre auquel correspond cette cotisation (01/01, 01/04, 01/07 ou 01/10).
+        tests:
+          - not_null
+      - name: cotisation_montant
+        description: Montant de la cotisation encaissée, en euros. Peut représenter un double trimestre en cas de paiement groupé.
+        tests:
+          - not_null
+      - name: encaissement_date
+        description: Date d'encaissement effectif de la cotisation, environ 3 mois après la date d'échéance.
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__ressources
+    description: |
+      **Ce que c'est :** Ressources financières déclarées par les assurés en cours d'invalidité.
+      **Grain :** Une ligne = une ressource perçue par un assuré sur une période donnée.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles marts.
+      **Sources :** raw_resources.
+      **Exceptions :** Uniquement pour les dossiers de type Invalidité. L'assurance prévoyance vient en complément de ces ressources pour maintenir le niveau de revenu de l'assuré définit contractuellement.
+    columns:
+      - name: ressource_id
+        description: Identifiant unique de la ressource.
+        tests:
+          - unique
+          - not_null
+      - name: dossier_id
+        description: Référence au dossier d'invalidité concerné.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+      - name: ressource_type
+        description: |
+          Nature de la ressource perçue par l'assuré.
+          PE = Pôle Emploi (allocations chômage, France Travail). Salaire = maintien partiel de salaire par l'employeur. Rente SS = rente d'invalidité versée par la Sécurité Sociale. Autre = toute autre source de revenu.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PE", "Salaire", "Rente SS", "Autre"]
+      - name: montant_mensuel
+        description: Montant mensuel de la ressource, en euros.
+        tests:
+          - not_null
+      - name: debut_date
+        description: Date de début de perception de cette ressource.
+        tests:
+          - not_null
+      - name: fin_date
+        description: Date de fin de perception. NULL si la ressource est toujours en cours.
+      - name: est_en_cours
+        description: Vrai si l'assuré perçoit encore cette ressource.
+        tests:
+          - not_null
+
+  - name: stg_prevcorp__beneficiaires
+    description: |
+      **Ce que c'est :** Bénéficiaires de rentes DC rattachés à un dossier sinistre.
+      **Grain :** Une ligne = un bénéficiaire pour un dossier donné.
+      **À qui ça s'adresse :** Couche interne — consommé par les modèles marts.
+      **Sources :** raw_beneficiaries.
+      **Exceptions :** Uniquement pour les dossiers Rente viagère (conjoint survivant) et Rente éducation (enfants du défunt). Un dossier Rente éducation peut avoir plusieurs bénéficiaires (un par enfant).
+    columns:
+      - name: beneficiaire_id
+        description: Identifiant unique du bénéficiaire.
+        tests:
+          - unique
+          - not_null
+      - name: dossier_id
+        description: Référence au dossier sinistre auquel ce bénéficiaire est rattaché.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+      - name: nom
+        description: Nom de famille du bénéficiaire.
+        tests:
+          - not_null
+      - name: prenom
+        description: Prénom du bénéficiaire.
+        tests:
+          - not_null
+      - name: naissance_date
+        description: Date de naissance du bénéficiaire. Utilisée pour calculer la majorité des enfants bénéficiaires de rentes éducation.
+        tests:
+          - not_null
