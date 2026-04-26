@@ -106,6 +106,12 @@ Le lien avec les contrats et entreprises se fait via raw_claims.
 ---
 
 ### raw_payments
+Règles métier par type de risque :
+- **Incapacité** : paiement tous les 15 jours, entre 60% et 100% du SALAIRE_REF. Montant stable, changement rare (~5%) si situation du salarié évolue.
+- **Invalidité** : paiement fin de mois. Montant = SALAIRE_REF - ressources du salarié. Ne peut pas dépasser le salaire (contrainte légale).
+- **Rente viagère / Rente éducation** : paiement fin de mois, montant fixe entre 20% et 60% du SALAIRE_REF.
+- **Décès** : paiement unique, montant entre 30 000 et 800 000 (moyenne ~75 000).
+
 
 | Colonne | Type | Description |
 |---|---|---|
@@ -119,6 +125,14 @@ Le lien avec les contrats et entreprises se fait via raw_claims.
 ---
 
 ### raw_premiums
+Règles métier :
+- Cotisations trimestrielles. `ECHEANCE_DATE` = premier jour du trimestre concerné (01/01, 01/04, 01/07, 01/10).
+- `DT_ENCAISSEMENT` = environ 3 mois après `ECHEANCE_DATE`.
+- Montant de base stable par contrat, avec revalorisation annuelle au 1er janvier (0% à 15%).
+- Si revalorisation > 12% : résiliation du contrat probable dans l'année.
+- Double paiement (~8% des cas) : un trimestre est sauté, le suivant contient le double du montant habituel.
+- ~5% de trimestres manquants (impayés).
+
 
 | Colonne | Type | Description |
 |---|---|---|
@@ -177,30 +191,30 @@ seeds/
 models/
 ├── staging/
 │   ├── stg_prevcorp__segments.sql
-│   ├── stg_prevcorp__contracts.sql
-│   ├── stg_prevcorp__companies.sql
-│   ├── stg_prevcorp__contract_companies.sql
-│   ├── stg_prevcorp__policyholders.sql
-│   ├── stg_prevcorp__claims.sql
-│   ├── stg_prevcorp__payments.sql
-│   ├── stg_prevcorp__premiums.sql
-│   ├── stg_prevcorp__resources.sql
-│   └── stg_prevcorp__beneficiaries.sql
+│   ├── stg_prevcorp__contrats.sql
+│   ├── stg_prevcorp__entreprises.sql
+│   ├── stg_prevcorp__contrats_entreprises.sql
+│   ├── stg_prevcorp__assures.sql
+│   ├── stg_prevcorp__dossiers.sql
+│   ├── stg_prevcorp__paiements.sql
+│   ├── stg_prevcorp__cotisations.sql
+│   ├── stg_prevcorp__ressources.sql
+│   └── stg_prevcorp__beneficiaires.sql
 ├── intermediate/
-│   ├── int_contracts_with_status.sql
-│   ├── int_claims_with_resolution.sql
-│   ├── int_premiums_normalized.sql
-│   └── int_payments_enriched.sql
+│   ├── int__dossiers_enrichis.sql
+│   ├── int__contrats_enrichis.sql
+│   ├── int__paiements_enrichis.sql
+│   └── int__cotisations_enrichies.sql
 └── marts/
-    ├── dim_segments.sql
-    ├── dim_companies.sql
-    ├── dim_contracts.sql
-    ├── dim_policyholders.sql
-    ├── fct_claims.sql
-    ├── fct_payments.sql
-    ├── fct_premiums.sql
-    ├── fct_resources.sql
-    └── fct_beneficiaries.sql
+    ├── dim__segments.sql
+    ├── dim__entreprises.sql
+    ├── dim__contrats.sql
+    ├── dim__assures.sql
+    ├── dim__beneficiaires.sql
+    ├── fct__dossiers.sql
+    ├── fct__paiements.sql
+    ├── fct__cotisations.sql
+    └── fct__ressources.sql
 ```
 
 ---
@@ -213,8 +227,7 @@ models/
 | raw_contracts | ~500 | Multi-contrats par segment |
 | raw_companies | ~500 | |
 | raw_contract_companies | ~600 | Distribution 80/15/5 |
-| raw_policyholders | ~2 000 | ~4 assurés par entreprise |
-| raw_claims | ~1 500 | |
+| raw_policyholders | ~2 000 | ~4 assurés par entreprise || raw_claims | ~1 500 | |
 | raw_payments | ~50 000 | Historique 36 mois |
 | raw_premiums | ~24 000 | 4 trimestres × 36 mois / 3 × 500 contrats — ~5% de trimestres manquants (impayés) |
 | raw_resources | ~1 000 | |
@@ -228,9 +241,13 @@ models/
 |---|---|---|
 | Nommage seeds en MAJUSCULES | Convention volontaire | Simule un export brut de progiciel de gestion |
 | Normalisation des noms de champs | Couche staging | La valeur ajoutée du staging est précisément cette transformation |
+| Langue des colonnes | Français | Cohérence avec les valeurs métier, la documentation et les utilisateurs. Choix délibéré, pas une méconnaissance des conventions dbt. |
+| Convention de nommage | `entite_attribut` (ex: `contrat_type`) | Lisibilité — on sait immédiatement à quelle entité appartient une colonne |
+| Double underscore `int__`, `dim__`, `fct__` | Alignement sur `stg_prevcorp__` | Cohérence visuelle entre toutes les couches |
 | `COMPANY_ID` dans raw_claims | Dénormalisation intentionnelle | Simule la réalité d'un SI de gestion |
 | `raw_contract_companies` junction table | Table de liaison dédiée | Relation n-n contrats ↔ entreprises |
 | `raw_policyholders` sans FK entreprise | Lien via raw_claims | Un assuré peut exister sans dossier actif (~5% du dataset) |
+| Langue des colonnes | Français | Cohérence avec les valeurs métier, la documentation et les utilisateurs. Choix délibéré, pas une méconnaissance des conventions dbt.
 
 ---
 
