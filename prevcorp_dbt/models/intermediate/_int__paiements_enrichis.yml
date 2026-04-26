@@ -1,0 +1,102 @@
+﻿version: 2
+
+models:
+  - name: int__paiements_enrichis
+    description: |
+      **Ce que c'est :** Paiements de prestations enrichis de l'identité de l'assuré, du dossier, de l'entreprise et du contrat.
+      **Grain :** Une ligne = un paiement de prestation.
+      **À qui ça s'adresse :** Mart `fct__paiements` et analyses financières croisant les flux de trésorerie avec les informations contractuelles et les bénéficiaires.
+      **Sources :** `stg_prevcorp__paiements`, `stg_prevcorp__dossiers`, `stg_prevcorp__assures`, `stg_prevcorp__contrats`, `stg_prevcorp__entreprises`.
+
+    columns:
+      - name: paiement_id
+        description: Identifiant unique du paiement.
+        tests:
+          - unique
+          - not_null
+
+      - name: dossier_id
+        description: Identifiant du dossier de sinistre auquel se rattache le paiement.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+
+      - name: dossier_numero
+        description: Numéro du dossier de sinistre auquel se rattache le paiement.
+        tests:
+          - not_null
+
+      - name: risque
+        description: |
+          Nature du risque couvert, héritée du dossier.
+          Détermine la fréquence et le mode de calcul du paiement : bimensuel pour l'incapacité, mensuel en fin de mois pour l'invalidité et les rentes, unique pour le décès.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Incapacité", "Invalidité", "Décès", "Rente viagère", "Rente éducation"]
+
+      - name: assure_id
+        description: Identifiant de l'assuré bénéficiaire de la prestation.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__assures')
+                field: assure_id
+
+      - name: assure_nom
+        description: Nom de famille de l'assuré bénéficiaire de la prestation.
+
+      - name: assure_prenom
+        description: Prénom de l'assuré bénéficiaire de la prestation.
+
+      - name: contrat_id
+        description: Identifiant du contrat sous lequel la prestation est versée.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+
+      - name: contrat_numero
+        description: Numéro du contrat sous lequel la prestation est versée.
+
+      - name: entreprise_id
+        description: Identifiant de l'entreprise de l'assuré au moment du sinistre.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__entreprises')
+                field: entreprise_id
+
+      - name: entreprise_siret
+        description: Numéro SIRET à 14 chiffres de l'entreprise de l'assuré.
+
+      - name: entreprise_nom
+        description: Raison sociale de l'entreprise de l'assuré.
+
+      - name: brut_montant
+        description: Montant brut de la prestation versée, en euros, avant déduction fiscale et sociale.
+        tests:
+          - not_null
+
+      - name: net_montant
+        description: Montant net perçu par l'assuré après déduction du prélèvement à la source, en euros.
+        tests:
+          - not_null
+
+      - name: pas_montant
+        description: Montant du Prélèvement à la Source retenu sur le paiement brut, en euros. Correspond à la différence entre le montant brut et le montant net.
+        tests:
+          - not_null
+
+      - name: paiement_date
+        description: Date à laquelle le paiement a été effectué.
+        tests:
+          - not_null

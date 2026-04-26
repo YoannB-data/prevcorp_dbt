@@ -1,0 +1,61 @@
+﻿version: 2
+
+models:
+  - name: int__contrats_enrichis
+    description: |
+      **Ce que c'est :** Contrats d'assurance prévoyance collective enrichis de leur segment de marché et du nombre d'entreprises couvertes.
+      **Grain :** Une ligne = un contrat.
+      **À qui ça s'adresse :** Marts `dim__contrats` et toute analyse croisant contrats, segments et portefeuille entreprises.
+      **Sources :** `stg_prevcorp__contrats`, `stg_prevcorp__segments`, `stg_prevcorp__contrats_entreprises`.
+
+    columns:
+      - name: contrat_id
+        description: Identifiant unique du contrat.
+        tests:
+          - unique
+          - not_null
+
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: contrat_type
+        description: |
+          Catégorie de personnel couverte par le contrat.
+          CADRE = salariés cadres uniquement. NON CADRE = salariés non cadres uniquement. ENSEMBLE DU PERSONNEL = tous salariés confondus.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+
+      - name: debut_date
+        description: Date d'effet du contrat (date d'adhésion).
+        tests:
+          - not_null
+
+      - name: fin_date
+        description: Date de résiliation du contrat. NULL si le contrat est toujours en vigueur.
+
+      - name: est_en_cours
+        description: Indique si le contrat est actif à la date d'aujourd'hui. Faux dès lors qu'une date de résiliation est renseignée et passée.
+        tests:
+          - not_null
+
+      - name: segment_id
+        description: Identifiant du segment de marché auquel appartient le contrat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__segments')
+                field: segment_id
+
+      - name: segment_nom
+        description: Libellé du segment de marché, tel que "Boucherie artisanale" ou "Enseignement privé".
+
+      - name: entreprise_nombre
+        description: Nombre d'entreprises rattachées au contrat. La majorité des contrats couvrent une seule entreprise ; jusqu'à trois entreprises sont possibles.
+        tests:
+          - not_null
