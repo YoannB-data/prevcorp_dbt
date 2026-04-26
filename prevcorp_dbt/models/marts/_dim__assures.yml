@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: dim__assures
+    description: |
+      **Ce que c'est :** Référentiel des assurés couverts par PrevCorp dans le cadre de contrats de prévoyance collective.
+      **Grain :** Une ligne = un assuré.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses démographiques des assurés (répartition par âge, pays de résidence, fiscalité internationale).
+      **Sources :** `stg_prevcorp__assures`.
+      **Exceptions :** Le lien avec les contrats et entreprises se fait uniquement via les dossiers sinistres.
+
+    columns:
+      - name: assure_id
+        description: Identifiant unique de l'assuré.
+        tests:
+          - unique
+          - not_null
+
+      - name: nom
+        description: Nom de famille de l'assuré.
+        tests:
+          - not_null
+
+      - name: prenom
+        description: Prénom de l'assuré.
+        tests:
+          - not_null
+
+      - name: naissance_date
+        description: Date de naissance de l'assuré.
+        tests:
+          - not_null
+
+      - name: adresse
+        description: Adresse postale de résidence de l'assuré.
+
+      - name: pays_code
+        description: Code ISO du pays de résidence de l'assuré (ex. FR, DE, MA). Permet d'identifier les assurés résidant à l'étranger.
+        tests:
+          - not_null
+
+      - name: attestation_fiscale_etranger
+        description: Indique si l'assuré a fourni une attestation fiscale d'un pays étranger. Pertinent uniquement pour les assurés résidant hors de France ; conditionne l'application du prélèvement à la source.
+        tests:
+          - not_null

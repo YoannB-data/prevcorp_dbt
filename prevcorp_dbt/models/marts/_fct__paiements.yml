@@ -1,0 +1,88 @@
+﻿version: 2
+
+models:
+  - name: fct__paiements
+    description: |
+      **Ce que c'est :** Règlements de prestations émis par PrevCorp sur les dossiers sinistres, enrichis de l'identité de l'assuré et des clés contractuelles.
+      **Grain :** Une ligne = un paiement de prestation.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses financières (flux de trésorerie, montants versés par risque, par contrat, par entreprise, calcul du PAS).
+      **Sources :** `int__paiements_enrichis` (lui-même issu de `stg_prevcorp__paiements`, `stg_prevcorp__dossiers`, `stg_prevcorp__assures`, `stg_prevcorp__contrats`, `stg_prevcorp__entreprises`).
+
+    columns:
+      - name: paiement_id
+        description: Identifiant unique du paiement.
+        tests:
+          - unique
+          - not_null
+
+      - name: dossier_id
+        description: Identifiant du dossier de sinistre auquel se rattache le paiement. 
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+
+      - name: assure_id
+        description: Identifiant de l'assuré bénéficiaire de la prestation.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__assures')
+                field: assure_id
+
+      - name: contrat_id
+        description: Identifiant du contrat sous lequel la prestation est versée.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+
+      - name: entreprise_id
+        description: Identifiant de l'entreprise de l'assuré au moment du sinistre.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__entreprises')
+                field: entreprise_id
+
+      - name: risque
+        description: |
+          Nature du risque couvert, héritée du dossier.
+          Détermine la fréquence de versement : bimensuel pour l'Incapacité, mensuel en fin de mois pour l'Invalidité et les rentes, paiement unique pour le Décès.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["Incapacité", "Invalidité", "Décès", "Rente viagère", "Rente éducation"]
+
+      - name: brut_montant
+        description: Montant brut de la prestation versée, en euros, avant déduction du prélèvement à la source.
+        tests:
+          - not_null
+
+      - name: net_montant
+        description: Montant net effectivement perçu par l'assuré, en euros, après déduction du prélèvement à la source.
+        tests:
+          - not_null
+
+      - name: pas_montant
+        description: Montant du Prélèvement à la Source retenu sur le paiement, en euros. Correspond à la différence entre le montant brut et le montant net, reversée à la DGFIP.
+        tests:
+          - not_null
+
+      - name: paiement_date
+        description: Date à laquelle le paiement a été émis par PrevCorp.
+        tests:
+          - not_null
+
+      - name: assure_nom
+        description: Nom de famille de l'assuré bénéficiaire de la prestation.
+
+      - name: assure_prenom
+        description: Prénom de l'assuré bénéficiaire de la prestation.

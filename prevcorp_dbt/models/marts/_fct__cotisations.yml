@@ -1,0 +1,58 @@
+﻿version: 2
+
+models:
+  - name: fct__cotisations
+    description: |
+      **Ce que c'est :** Cotisations trimestrielles encaissées par PrevCorp sur les contrats, enrichies des informations contractuelles et du segment.
+      **Grain :** Une ligne = une cotisation (une échéance trimestrielle pour un contrat donné).
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses de sinistralité nécessitant la mise en regard des prestations versées et des cotisations perçues.
+      **Sources :** `int__cotisations_enrichies` (lui-même issu de `stg_prevcorp__cotisations`, `stg_prevcorp__contrats`, `stg_prevcorp__segments`).
+
+    columns:
+      - name: cotisation_id
+        description: Identifiant unique de la cotisation.
+        tests:
+          - unique
+          - not_null
+
+      - name: contrat_id
+        description: Identifiant du contrat auquel se rattache la cotisation.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__contrats')
+                field: contrat_id
+
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: contrat_type
+        description: |
+          Catégorie de personnel couverte par le contrat.
+          CADRE = salariés cadres uniquement. NON CADRE = salariés non cadres uniquement. ENSEMBLE DU PERSONNEL = tous salariés confondus.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["CADRE", "NON CADRE", "ENSEMBLE DU PERSONNEL"]
+
+      - name: contrat_est_en_cours
+        description: Indique si le contrat était actif.
+
+      - name: segment_nom
+        description: Libellé du segment de marché du contrat (ex. "Boucherie artisanale", "Enseignement privé").
+
+      - name: cotisation_montant
+        description: Montant de la cotisation trimestrielle encaissée, en euros.
+        tests:
+          - not_null
+
+      - name: echeance_date
+        description: Premier jour du trimestre auquel correspond la cotisation (01/01, 01/04, 01/07 ou 01/10).
+        tests:
+          - not_null
+
+      - name: encaissement_date
+        description: Date à laquelle la cotisation a été effectivement encaissée, soit environ trois mois après la date d'échéance.

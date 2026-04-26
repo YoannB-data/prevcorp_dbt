@@ -1,0 +1,54 @@
+﻿version: 2
+
+models:
+  - name: fct__ressources
+    description: |
+      **Ce que c'est :** Ressources financières déclarées par les assurés en invalidité, servant à calculer le complément de revenu versé par PrevCorp.
+      **Grain :** Une ligne = une ressource perçue par un assuré sur une période donnée.
+      **À qui ça s'adresse :** Agent text-to-SQL et analyses de maintien de revenu (comparaison ressources déclarées vs prestations versées, suivi des dossiers invalidité actifs).
+      **Sources :** `stg_prevcorp__ressources`.
+      **Exceptions :** Uniquement pour les dossiers Invalidité. PrevCorp complète ces ressources pour atteindre le niveau de revenu garanti contractuellement.
+
+    columns:
+      - name: ressource_id
+        description: Identifiant unique de la ressource.
+        tests:
+          - unique
+          - not_null
+
+      - name: dossier_id
+        description: Identifiant du dossier d'invalidité auquel se rattache cette ressource.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_prevcorp__dossiers')
+                field: dossier_id
+
+      - name: ressource_type
+        description: |
+          Nature de la ressource perçue par l'assuré en parallèle de la prestation PrevCorp.
+          PE = allocation chômage versée par France Travail (ex-Pôle Emploi). Salaire = maintien partiel de salaire par l'employeur. Rente SS = rente d'invalidité versée par la Sécurité Sociale. Autre = toute autre source de revenu.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PE", "Salaire", "Rente SS", "Autre"]
+
+      - name: montant_mensuel
+        description: Montant mensuel de la ressource, en euros.
+        tests:
+          - not_null
+
+      - name: debut_date
+        description: Date de début de perception de cette ressource par l'assuré.
+        tests:
+          - not_null
+
+      - name: fin_date
+        description: Date de fin de perception de la ressource. NULL si la ressource est toujours en cours.
+
+      - name: est_en_cours
+        description: Indique si l'assuré perçoit encore cette ressource à la date d'aujourd'hui.
+        tests:
+          - not_null
