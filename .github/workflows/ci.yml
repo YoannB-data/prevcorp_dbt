@@ -46,7 +46,7 @@ jobs:
             outputs:
               dev:
                 type: duckdb
-                path: prevcorp_dbt/dev.duckdb
+                path: dev.duckdb
                 threads: 1
           EOF
 
