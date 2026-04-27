@@ -604,9 +604,9 @@ def gen_payments(claims: list[dict]) -> list[dict]:
 # ─────────────────────────────────────────────
 
 
-def gen_premiums(
+def gen_premiums(  # pylint: disable=too-many-locals,too-many-branches
     contracts: list[dict],
-) -> list[dict]:  # pylint: disable=too-many-locals,too-many-branches
+) -> list[dict]:
     """Génère les cotisations trimestrielles avec revalorisation annuelle cohérente."""
     rows = []
     counter = 1
