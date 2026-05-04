@@ -2,6 +2,3 @@ version: 2
 
 seeds:
   - name: raw_companies
-    config:
-      column_types:
-        SIRET: varchar
