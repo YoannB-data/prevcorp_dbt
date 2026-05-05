@@ -71,7 +71,7 @@ Renommage des colonnes (MAJUSCULES → snake_case anglais), cast des types, NULL
 Enrichissements par jointure sans changement de granularité. Conçue pour être réutilisée par plusieurs modèles marts. Dans ce POC, certains modèles intermediate sont consommés par un seul mart — ils documentent la logique métier et préparent une montée en complexité future.
 
 ### Couche marts
-Modèles exposés à l'agent LLM. Dimensions (`dim_*`) : entités descriptives stables. Faits (`fct_*`) : événements mesurables dans le temps.
+Modèles exposés à l'agent LLM. Dimensions (`dim__*`) : entités descriptives stables. Faits (`fct__*`) : événements mesurables dans le temps ou tables pont (factless facts) pour les relations M:N.
 
 | Modèle | Description |
 |---|---|
@@ -84,6 +84,7 @@ Modèles exposés à l'agent LLM. Dimensions (`dim_*`) : entités descriptives s
 | `fct__paiements` | Règlements effectués par dossier |
 | `fct__cotisations` | Cotisations trimestrielles par contrat |
 | `fct__ressources` | Ressources déclarées des assurés en invalidité |
+| `fct__contrats_entreprises` | Table pont contrat ↔ entreprise (M:N), état courant |
 
 ---
 
