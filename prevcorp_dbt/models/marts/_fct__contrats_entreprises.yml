@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: fct__contrats_entreprises
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - contrat_id
+              - entreprise_id
+    description: |
+      **Ce que c'est :** Table pont exposant la relation many-to-many entre contrats et entreprises affiliées, avec l'état courant de chaque partie.
+      **Grain :** Une ligne = un couple unique (contrat, entreprise).
+      **À qui ça s'adresse :** Agent text-to-SQL pour les questions croisant le portefeuille contrats et les entreprises, notamment les couples sans sinistre — invisibles via fct__dossiers.
+      **Sources :** `stg_prevcorp__contrats_entreprises` (lien M:N), enrichi par `stg_prevcorp__contrats` et `stg_prevcorp__entreprises`.
+      **Exceptions :** Capture l'état actuel uniquement. Aucun historique des affiliations passées.
+    columns:
+      - name: contrat_id
+        description: Identifiant du contrat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim__contrats')
+                field: contrat_id
+
+      - name: contrat_numero
+        description: Numéro de contrat tel qu'il figure dans le système de gestion.
+        tests:
+          - not_null
+
+      - name: entreprise_id
+        description: Identifiant de l'entreprise affiliée au contrat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim__entreprises')
+                field: entreprise_id
+
+      - name: entreprise_nom
+        description: Raison sociale de l'entreprise.
+        tests:
+          - not_null
+
+      - name: contrat_est_en_cours
+        description: Vrai si le contrat est actif à la date d'aujourd'hui (date de résiliation nulle).
+        tests:
+          - not_null
+
+      - name: entreprise_est_en_cours
+        description: Vrai si l'entreprise est toujours active dans le portefeuille (date de fin nulle).
+        tests:
+          - not_null
