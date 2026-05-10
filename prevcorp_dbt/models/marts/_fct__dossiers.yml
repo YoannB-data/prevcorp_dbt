@@ -78,7 +78,11 @@ models:
           - not_null
 
       - name: fait_generateur_date
-        description: Date du sinistre initial.
+        description: |
+          Date du sinistre initial (fait générateur). C'est la date de référence 
+          pour déterminer si un dossier était en cours à une date donnée : utiliser 
+          cette colonne, et non creation_date, pour filtrer les encours à une date 
+          passée.
         tests:
           - not_null
 
@@ -120,7 +124,10 @@ models:
         description: Code ISO du pays de résidence de l'assuré (ex. FR, DE, MA).
 
       - name: entreprise_nom
-        description: Raison sociale de l'entreprise employant l'assuré au moment du sinistre.
+        description: |
+          Raison sociale de l'entreprise employant l'assuré au moment du sinistre.
+          Quand une demande mentionne un nom d'entreprise ou de client sans préciser 
+          la colonne, filtrer sur cette colonne en priorité.
 
       - name: entreprise_est_en_cours
         description: Indique si l'entreprise est toujours active dans le portefeuille à la date d'aujourd'hui.
