@@ -40,6 +40,6 @@ models:
           - not_null
 
       - name: attestation_fiscale_etranger
-        description: Indique si l'assuré a fourni une attestation fiscale d'un pays étranger. Pertinent uniquement pour les assurés résidant hors de France ; conditionne l'application du prélèvement à la source.
+        description: Indique si l'assuré a fourni une attestation fiscale d'un pays étranger. Pertinent uniquement pour les assurés résidant hors de France ; conditionne l'application du prélèvement à la source. Par défaut, les assurés sont fiscalisé en France.
         tests:
           - not_null
