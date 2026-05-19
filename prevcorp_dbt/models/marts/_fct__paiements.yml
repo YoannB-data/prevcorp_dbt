@@ -72,7 +72,7 @@ models:
           - not_null
 
       - name: pas_montant
-        description: Montant du Prélèvement à la Source retenu sur le paiement, en euros. Correspond à la différence entre le montant brut et le montant net, reversée à la DGFIP.
+        description: Montant du Prélèvement à la Source retenu sur le paiement, en euros. Correspond à la différence entre le montant brut et le montant net, reversée à la DGFIP. C'est ce champ qui représente le montant fiscal à déclarer.
         tests:
           - not_null
 
