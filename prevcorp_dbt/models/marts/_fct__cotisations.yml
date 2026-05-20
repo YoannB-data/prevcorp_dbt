@@ -56,3 +56,49 @@ models:
 
       - name: encaissement_date
         description: Date à laquelle la cotisation a été effectivement encaissée, soit environ trois mois après la date d'échéance.
+
+semantic_models:
+  - name: cotisations
+    model: ref('fct__cotisations')
+    entities:
+      - name: cotisation
+        type: primary
+        expr: cotisation_id
+      - name: contrat
+        type: foreign
+        expr: contrat_id
+    dimensions:
+      - name: contrat_numero
+        type: categorical
+      - name: segment_nom
+        type: categorical
+      - name: echeance_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: encaissement_date
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: cotisation_montant
+        agg: sum
+        expr: cotisation_montant
+        agg_time_dimension: encaissement_date
+      - name: count_cotisations
+        agg: count
+        expr: cotisation_id
+        agg_time_dimension: encaissement_date
+
+metrics:
+  - name: total_cotisations
+    label: "Total cotisations perçues"
+    type: simple
+    type_params:
+      measure: cotisation_montant
+
+  - name: nb_cotisations
+    label: "Nombre de cotisations perçues"
+    type: simple
+    type_params:
+      measure: count_cotisations
