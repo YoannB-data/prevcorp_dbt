@@ -86,3 +86,60 @@ models:
 
       - name: assure_prenom
         description: Prénom de l'assuré bénéficiaire de la prestation.
+
+semantic_models:
+  - name: paiements
+    model: ref('fct__paiements')
+    entities:
+      - name: paiement
+        type: primary
+        expr: paiement_id
+      - name: contrat
+        type: foreign
+        expr: contrat_id
+      - name: dossier
+        type: foreign
+        expr: dossier_id
+    dimensions:
+      - name: risque
+        type: categorical
+      - name: paiement_date
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: brut_montant
+        agg: sum
+        expr: brut_montant
+        agg_time_dimension: paiement_date
+      - name: pas_montant
+        agg: sum
+        expr: pas_montant
+        agg_time_dimension: paiement_date
+      - name: net_montant
+        agg: sum
+        expr: net_montant
+        agg_time_dimension: paiement_date
+      - name: nb_paiements
+        agg: count
+        expr: paiement_id
+        agg_time_dimension: paiement_date
+
+metrics:
+  - name: total_prestations_brutes
+    label: "Total prestations brutes versées"
+    type: simple
+    type_params:
+      measure: brut_montant
+
+  - name: total_prestations_nettes
+    label: "Total prestations nettes versées"
+    type: simple
+    type_params:
+      measure: net_montant
+
+  - name: total_montant_pas
+    label: "Total des montants PAS (Prélèvement A la Source) reversés à la DGFIP"
+    type: simple
+    type_params:
+      measure: pas_montant

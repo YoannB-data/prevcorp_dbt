@@ -8,6 +8,7 @@ dependencies = [
     "black>=25.12.0",
     "dbt-core>=1.11.8",
     "dbt-duckdb>=1.10.1",
+    "dbt-metricflow[duckdb]>=0.13.0",
     "faker>=40.15.0",
     "isort>=8.0.1",
     "pylint>=4.0.5",
